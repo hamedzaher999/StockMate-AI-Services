@@ -77,6 +77,6 @@ export class OpenRouterProvider implements LlmProvider {
 
 export function createLlmProvider(): LlmProvider {
   return new OpenRouterProvider(
-    process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini',
+    process.env.OPENROUTER_MODEL ?? 'google/gemini-2.5-flash',
   );
 }
