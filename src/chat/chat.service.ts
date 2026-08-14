@@ -4,7 +4,7 @@ import {
   GenerationService,
 } from 'src/rag/generation/generation.service';
 import { RetrievalService } from 'src/rag/retrieval/retrieval.service';
-import { IncomingMessageDto } from './incoming-message.dto';
+import { IncomingMessageDto } from './dto/incoming-message.dto';
 
 export interface ChatReply {
   answer: string;

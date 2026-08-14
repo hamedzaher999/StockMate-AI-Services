@@ -47,21 +47,29 @@ export class IngestionService {
 
     const { frontmatter, sections } = parsed;
     this.logger.log(
-      `Ingesting "${frontmatter.feature}" (${sections.length} sections) from ${sourcePath}`,
+      `Ingesting "${frontmatter.feature}" [${frontmatter.doc_type}] (${sections.length} sections) from ${sourcePath}`,
     );
 
     const documentResult = await this.pool.query<{ id: string }>(
       `
             INSERT INTO documents
-                (feature, module, requirement_ref, doc_type, actors, related_features,
-                 tags, raw_content, source_path, last_updated)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                (feature, module, doc_type, platform, routes, requires_permission,
+                 requirement_ref, actors, related_features, related_capability,
+                 related_ui_flows, related_glossary, tags, raw_content, source_path,
+                 last_updated)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
             ON CONFLICT (feature) DO UPDATE SET
                 module = EXCLUDED.module,
-                requirement_ref = EXCLUDED.requirement_ref,
                 doc_type = EXCLUDED.doc_type,
+                platform = EXCLUDED.platform,
+                routes = EXCLUDED.routes,
+                requires_permission = EXCLUDED.requires_permission,
+                requirement_ref = EXCLUDED.requirement_ref,
                 actors = EXCLUDED.actors,
                 related_features = EXCLUDED.related_features,
+                related_capability = EXCLUDED.related_capability,
+                related_ui_flows = EXCLUDED.related_ui_flows,
+                related_glossary = EXCLUDED.related_glossary,
                 tags = EXCLUDED.tags,
                 raw_content = EXCLUDED.raw_content,
                 source_path = EXCLUDED.source_path,
@@ -71,10 +79,16 @@ export class IngestionService {
       [
         frontmatter.feature,
         frontmatter.module,
-        frontmatter.requirement_ref ?? null,
         frontmatter.doc_type,
+        frontmatter.platform ?? null,
+        frontmatter.routes,
+        frontmatter.requires_permission ?? null,
+        frontmatter.requirement_ref ?? null,
         frontmatter.actors,
         frontmatter.related_features,
+        frontmatter.related_capability ?? null,
+        frontmatter.related_ui_flows,
+        frontmatter.related_glossary,
         frontmatter.tags,
         raw,
         sourcePath,
@@ -99,8 +113,9 @@ export class IngestionService {
         `
                 INSERT INTO chunks
                     (document_id, section_heading, section_type, content, chunk_index,
-                     embedding, module, actors, requirement_ref)
-                VALUES ($1::uuid, $2, $3, $4, $5, $6::vector, $7, $8, $9)
+                     module, doc_type, platform, routes, requires_permission, actors,
+                     requirement_ref, embedding)
+                VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::vector)
                 `,
         [
           documentId,
@@ -108,10 +123,14 @@ export class IngestionService {
           section.sectionType,
           section.content,
           section.index,
-          vectorLiteral,
           frontmatter.module,
+          frontmatter.doc_type,
+          frontmatter.platform ?? null,
+          frontmatter.routes,
+          frontmatter.requires_permission ?? null,
           frontmatter.actors,
           frontmatter.requirement_ref ?? null,
+          vectorLiteral,
         ],
       );
     }
@@ -128,15 +147,21 @@ export class IngestionService {
     );
 
     const errors: { file: string; error: string }[] = [];
+    let succeeded = 0;
 
     for (const file of files) {
       try {
         await this.ingestFile(file, knowledgeBaseRoot);
+        succeeded++;
       } catch (err) {
         errors.push({ file, error: (err as Error).message });
         this.logger.error(`✗ Failed: ${file}`);
       }
     }
+
+    this.logger.log(
+      `\nIngestion summary: ${succeeded}/${files.length} succeeded, ${errors.length} failed.`,
+    );
 
     if (errors.length > 0) {
       this.logger.error(`\n${errors.length} file(s) failed to ingest:`);

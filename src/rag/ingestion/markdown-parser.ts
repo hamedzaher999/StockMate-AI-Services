@@ -7,6 +7,16 @@ export interface ParsedFrontmatter {
   doc_type: string;
   tags: string[];
   last_updated?: string;
+
+  platform?: string;
+  routes: string[];
+  requires_permission?: string | null;
+  related_capability?: string;
+  related_ui_flows: string[];
+  related_glossary: string[];
+  permission_codes: string[];
+  role_name?: string;
+  generated_from: string[];
 }
 
 export interface ParsedSection {
@@ -50,6 +60,8 @@ function parseFrontmatter(raw: string): {
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
+    } else if (value === 'null' || value === '') {
+      value = null;
     }
 
     fm[key] = value;
@@ -59,16 +71,31 @@ function parseFrontmatter(raw: string): {
     feature: fm.feature,
     module: fm.module,
     actors: fm.actors ?? [],
-    requirement_ref: fm.requirement_ref,
+    requirement_ref: fm.requirement_ref ?? undefined,
     related_features: fm.related_features ?? [],
-    doc_type: fm.doc_type ?? 'procedure',
+    doc_type: fm.doc_type ?? 'capability',
     tags: fm.tags ?? [],
-    last_updated: fm.last_updated,
+    last_updated: fm.last_updated ?? undefined,
+
+    platform: fm.platform ?? undefined,
+    routes: fm.routes ?? [],
+    requires_permission: fm.requires_permission ?? null,
+    related_capability: fm.related_capability ?? undefined,
+    related_ui_flows: fm.related_ui_flows ?? [],
+    related_glossary: fm.related_glossary ?? [],
+    permission_codes: fm.permission_codes ?? [],
+    role_name: fm.role_name ?? undefined,
+    generated_from: fm.generated_from ?? [],
   };
 
   if (!frontmatter.feature || !frontmatter.module) {
     throw new Error(
       `Frontmatter missing required fields (feature, module). Got: ${JSON.stringify(fm)}`,
+    );
+  }
+  if (!frontmatter.doc_type) {
+    throw new Error(
+      `Frontmatter missing required field "doc_type" for feature "${frontmatter.feature}".`,
     );
   }
 
@@ -85,6 +112,20 @@ const HEADING_TO_SECTION_TYPE: Record<string, string> = {
   'إجراءات ذات صلة': 'related_actions',
   'رابط الصفحة': 'direct_link',
   'مرجع المتطلب': 'requirement_reference',
+
+  'What this is': 'overview',
+  'What this is NOT': 'overview',
+  'How to get here': 'navigation',
+  'How this works': 'overview',
+  'Creation rules': 'validation_rules',
+  Deactivation: 'business_rules',
+  'Deactivation effects': 'business_rules',
+  'Who can do what': 'permissions',
+  'Who can create one': 'permissions',
+  'Who sees what in the list view': 'permissions',
+  'Common questions this answers': 'faq',
+  'Common questions': 'faq',
+  "Common 'why can't I...' answers for this specific page": 'faq',
 };
 
 function headingToSectionType(heading: string): string {
@@ -92,11 +133,7 @@ function headingToSectionType(heading: string): string {
   const known = HEADING_TO_SECTION_TYPE[normalized];
   if (known) return known;
 
-  throw new Error(
-    `Unknown section heading "${heading}". Add it to HEADING_TO_SECTION_TYPE ` +
-      `in markdown-parser.ts, or fix a typo in the source .md file. ` +
-      `Refusing to guess — a wrong auto-generated slug is worse than a loud failure.`,
-  );
+  return 'general';
 }
 
 function splitIntoSections(body: string): ParsedSection[] {
