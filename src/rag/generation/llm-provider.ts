@@ -77,6 +77,6 @@ export class OpenRouterProvider implements LlmProvider {
 
 export function createLlmProvider(): LlmProvider {
   return new OpenRouterProvider(
-    process.env.OPENROUTER_MODEL ?? 'google/gemini-2.5-flash',
+    process.env.OPENROUTER_MODEL ?? 'openrouter/free',
   );
 }
