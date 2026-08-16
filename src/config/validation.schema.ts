@@ -9,9 +9,6 @@ export const validationSchema = Joi.object({
   DATABASE_URL: Joi.string().required(),
   CHATBOT_INTERNAL_SECRET: Joi.string().min(32).required(),
 
-  OPENROUTER_API_KEY: Joi.string().required(),
-  OPENROUTER_MODEL: Joi.string().default('openai/gpt-4o-mini'),
-
   OLLAMA_URL: Joi.string().default('http://localhost:11434'),
   OLLAMA_EMBEDDING_MODEL: Joi.string().default('bge-m3'),
 
@@ -19,4 +16,13 @@ export const validationSchema = Joi.object({
   CLOUDFLARE_API_TOKEN: Joi.string().allow('').optional(),
 
   EMBEDDING_DIMENSIONS: Joi.number().default(1024),
+  OPENROUTER_API_KEY: Joi.string().required(),
+  OPENROUTER_MODEL: Joi.string().default('openai/gpt-4o-mini'),
+
+  GEMINI_API_KEY: Joi.string().optional(),
+  GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
+
+  LLM_PROVIDER: Joi.string()
+    .valid('openrouter', 'gemini')
+    .default('openrouter'),
 });

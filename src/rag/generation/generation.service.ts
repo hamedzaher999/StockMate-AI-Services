@@ -55,7 +55,9 @@ export class GenerationService {
 
   constructor() {
     this.provider = createLlmProvider();
-    this.logger.log('GenerationService using provider: openrouter');
+    this.logger.log(
+      `GenerationService using provider: ${process.env.LLM_PROVIDER ?? 'openrouter'}`,
+    );
   }
 
   async rewriteQueryWithHistory(
