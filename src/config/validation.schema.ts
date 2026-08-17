@@ -16,13 +16,17 @@ export const validationSchema = Joi.object({
   CLOUDFLARE_API_TOKEN: Joi.string().allow('').optional(),
 
   EMBEDDING_DIMENSIONS: Joi.number().default(1024),
+
   OPENROUTER_API_KEY: Joi.string().required(),
   OPENROUTER_MODEL: Joi.string().default('openai/gpt-4o-mini'),
 
   GEMINI_API_KEY: Joi.string().optional(),
   GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
 
+  GROQ_API_KEY: Joi.string().optional(),
+  GROQ_MODEL: Joi.string().default('llama-3.3-70b-versatile'),
+
   LLM_PROVIDER: Joi.string()
-    .valid('openrouter', 'gemini')
+    .valid('openrouter', 'gemini', 'groq')
     .default('openrouter'),
 });

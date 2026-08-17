@@ -66,7 +66,7 @@ export class OpenRouterProvider implements LlmProvider {
 
     const text = data.choices?.[0]?.message?.content;
     if (!text) {
-      throw new Error(`OpenRouter returned no text.`);
+      throw new Error('OpenRouter returned no text.');
     }
     return text;
   }
@@ -76,7 +76,7 @@ export class OpenRouterProvider implements LlmProvider {
   }
 }
 
-// 2. New Gemini Provider
+// 2. Existing Gemini Provider
 export class GeminiProvider implements LlmProvider {
   private readonly ai: GoogleGenAI;
   private readonly model: string;
@@ -123,12 +123,74 @@ export class GeminiProvider implements LlmProvider {
   }
 }
 
-// 3. Dynamic Factory Switcher
+// 3. New Groq Provider
+export class GroqProvider implements LlmProvider {
+  private readonly apiKey: string;
+  private readonly model: string;
+
+  constructor(model: string) {
+    const key = process.env.GROQ_API_KEY;
+    if (!key) {
+      throw new Error('No Groq API key found. Set GROQ_API_KEY in your .env.');
+    }
+    this.apiKey = key;
+    this.model = model;
+  }
+
+  async chat(
+    systemPrompt: string,
+    messages: LlmMessage[],
+    temperature: number,
+  ): Promise<string> {
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'system', content: systemPrompt }, ...messages],
+          temperature,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Groq request failed (${response.status}): ${body}`);
+    }
+
+    const data = (await response.json()) as {
+      choices: { message: { content: string } }[];
+    };
+
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) {
+      throw new Error('Groq returned no text.');
+    }
+    return text;
+  }
+
+  async complete(prompt: string, temperature: number): Promise<string> {
+    return this.chat('', [{ role: 'user', content: prompt }], temperature);
+  }
+}
+
+// 4. Dynamic Factory Switcher
 export function createLlmProvider(): LlmProvider {
   const choice = process.env.LLM_PROVIDER ?? 'openrouter';
 
   if (choice === 'gemini') {
     return new GeminiProvider(process.env.GEMINI_MODEL ?? 'gemini-2.5-flash');
+  }
+
+  if (choice === 'groq') {
+    return new GroqProvider(
+      process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+    );
   }
 
   return new OpenRouterProvider(
