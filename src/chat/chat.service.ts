@@ -22,19 +22,7 @@ export class ChatService {
   async handleMessage(dto: IncomingMessageDto): Promise<ChatReply> {
     const history: ChatMessage[] = dto.history;
 
-    let standaloneQuestion: string;
-    try {
-      standaloneQuestion = await this.generationService.rewriteQueryWithHistory(
-        dto.message,
-        history,
-      );
-    } catch (err) {
-      this.logger.error(
-        `[STAGE:rewrite] failed for user=${dto.userId}: ${(err as Error).message}`,
-        (err as Error).stack,
-      );
-      throw err;
-    }
+    const standaloneQuestion = dto.message;
 
     let chunks;
     try {
