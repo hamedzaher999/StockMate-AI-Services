@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
@@ -12,6 +13,11 @@ import {
 enum ChatRole {
   user = 'user',
   assistant = 'assistant',
+}
+
+enum ChatPlatform {
+  web = 'web',
+  mobile = 'mobile',
 }
 
 class HistoryMessageDto {
@@ -36,4 +42,12 @@ export class IncomingMessageDto {
 
   @IsUUID()
   userId!: string;
+
+  @IsEnum(ChatPlatform)
+  platform!: ChatPlatform;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  role?: string;
 }

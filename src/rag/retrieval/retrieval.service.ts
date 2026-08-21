@@ -6,6 +6,7 @@ import { PG_POOL } from 'src/common/db.module';
 export interface RetrievalFilter {
   module?: string;
   actor?: string;
+  platform?: string;
 }
 
 export interface RetrievalOptions {
@@ -58,7 +59,14 @@ export class RetrievalService {
 
     if (filter.actor) {
       params.push(filter.actor);
-      conditions.push(`$${params.length} = ANY(actors)`);
+      conditions.push(
+        `(cardinality(c.actors) = 0 OR $${params.length} = ANY(c.actors))`,
+      );
+    }
+
+    if (filter.platform) {
+      params.push(filter.platform);
+      conditions.push(`(c.platform IS NULL OR c.platform = $${params.length})`);
     }
 
     if (excludeSectionTypes.length > 0) {

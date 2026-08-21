@@ -28,7 +28,7 @@ export class ChatService {
     try {
       chunks = await this.retrievalService.search(
         standaloneQuestion,
-        {},
+        { platform: dto.platform, actor: dto.role },
         { limit: 5, minSimilarity: 0.3 },
       );
     } catch (err) {
@@ -40,7 +40,7 @@ export class ChatService {
     }
 
     this.logger.debug(
-      `user=${dto.userId} question="${dto.message}" -> ${chunks.length} chunk(s) retrieved`,
+      `user=${dto.userId} platform=${dto.platform} role=${dto.role ?? 'n/a'} question="${dto.message}" -> ${chunks.length} chunk(s) retrieved`,
     );
 
     let result;
