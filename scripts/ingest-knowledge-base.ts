@@ -117,6 +117,10 @@ async function ingestFile(filePath: string): Promise<void> {
 
   /*
    * 1. Create/update the document
+   *
+   * NOTE: this now includes platform, routes, requires_permission,
+   * related_capability, related_ui_flows, related_glossary — these
+   * were missing before and are part of the current frontmatter schema.
    */
   const documentResult = await pool.query<{
     id: string;
@@ -125,34 +129,37 @@ async function ingestFile(filePath: string): Promise<void> {
       INSERT INTO documents (
         feature,
         module,
-        requirement_ref,
         doc_type,
+        platform,
+        routes,
+        requires_permission,
+        requirement_ref,
         actors,
         related_features,
+        related_capability,
+        related_ui_flows,
+        related_glossary,
         tags,
         raw_content,
         source_path,
         last_updated
       )
       VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       ON CONFLICT (feature)
       DO UPDATE SET
         module = EXCLUDED.module,
-        requirement_ref = EXCLUDED.requirement_ref,
         doc_type = EXCLUDED.doc_type,
+        platform = EXCLUDED.platform,
+        routes = EXCLUDED.routes,
+        requires_permission = EXCLUDED.requires_permission,
+        requirement_ref = EXCLUDED.requirement_ref,
         actors = EXCLUDED.actors,
         related_features = EXCLUDED.related_features,
+        related_capability = EXCLUDED.related_capability,
+        related_ui_flows = EXCLUDED.related_ui_flows,
+        related_glossary = EXCLUDED.related_glossary,
         tags = EXCLUDED.tags,
         raw_content = EXCLUDED.raw_content,
         source_path = EXCLUDED.source_path,
@@ -163,10 +170,16 @@ async function ingestFile(filePath: string): Promise<void> {
     [
       frontmatter.feature,
       frontmatter.module,
-      frontmatter.requirement_ref ?? null,
       frontmatter.doc_type,
+      frontmatter.platform ?? null,
+      frontmatter.routes,
+      frontmatter.requires_permission ?? null,
+      frontmatter.requirement_ref ?? null,
       frontmatter.actors,
       frontmatter.related_features,
+      frontmatter.related_capability ?? null,
+      frontmatter.related_ui_flows,
+      frontmatter.related_glossary,
       frontmatter.tags,
       raw,
       sourcePath,
@@ -197,6 +210,10 @@ async function ingestFile(filePath: string): Promise<void> {
 
   /*
    * 4. Store chunks + vectors
+   *
+   * NOTE: doc_type, platform, routes, requires_permission are now
+   * included — doc_type is NOT NULL on the chunks table, which is
+   * what caused every insert to fail before this fix.
    */
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
@@ -212,21 +229,17 @@ async function ingestFile(filePath: string): Promise<void> {
           section_type,
           content,
           chunk_index,
-          embedding,
           module,
+          doc_type,
+          platform,
+          routes,
+          requires_permission,
           actors,
-          requirement_ref
+          requirement_ref,
+          embedding
         )
         VALUES (
-          $1::uuid,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6::vector,
-          $7,
-          $8,
-          $9
+          $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::vector
         )
       `,
       [
@@ -235,10 +248,14 @@ async function ingestFile(filePath: string): Promise<void> {
         section.sectionType,
         section.content,
         section.index,
-        vectorLiteral,
         frontmatter.module,
+        frontmatter.doc_type,
+        frontmatter.platform ?? null,
+        frontmatter.routes,
+        frontmatter.requires_permission ?? null,
         frontmatter.actors,
         frontmatter.requirement_ref ?? null,
+        vectorLiteral,
       ],
     );
   }
@@ -305,6 +322,7 @@ async function main() {
    */
   let successful = 0;
   let failed = 0;
+  const failures: { file: string; error: string }[] = [];
 
   for (const file of files) {
     try {
@@ -314,9 +332,13 @@ async function main() {
     } catch (error) {
       failed++;
 
+      const message = error instanceof Error ? error.message : String(error);
+
+      failures.push({ file, error: message });
+
       console.error(`\n❌ Failed: ${file}`);
 
-      console.error(error instanceof Error ? error.message : error);
+      console.error(message);
     }
   }
 
@@ -327,6 +349,13 @@ async function main() {
   console.log(`Successful: ${successful}`);
 
   console.log(`Failed: ${failed}`);
+
+  if (failures.length > 0) {
+    console.log('\nFailure summary:');
+    for (const f of failures) {
+      console.log(`  - ${f.file}: ${f.error}`);
+    }
+  }
 
   if (failed > 0) {
     process.exitCode = 1;
